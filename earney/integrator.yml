@@ -31,7 +31,7 @@ spec:
                   "cp /tmp/files/tdameritrade.json /usr/config/tdameritrade/tdameritrade.json && ls /usr/config/tdameritrade"
                   ]
           imagePullPolicy: Always
-          command: ["celery", "-A", "integrator", "worker", "--concurrency=1"]
+          command: ["python3", "-m", "celery", "-A", "integrator", "worker", "-l", "debug"]
           env:
           - name: ENV
             value: server_default

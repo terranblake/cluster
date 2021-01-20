@@ -15,11 +15,23 @@ spec:
       labels:
         app: redis
     spec:
+      # this is not inteneded to stay this way. there are issues using hostPath with k3s to provision
+      # volumes, so temporarily, this service has full rw access to the volume mounted under the name data
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
       containers:
         - name: redis
           image: redis
           ports:
           - containerPort: 6379
+          volumeMounts:
+          - name: data
+            mountPath: /data
+      volumes:
+      - name: data
+        hostPath:
+          path: /var/lib/redis
 ---
 apiVersion: v1
 kind: Service

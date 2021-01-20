@@ -15,6 +15,11 @@ spec:
       labels:
         app: postgres
     spec:
+      # this is not inteneded to stay this way. there are issues using hostPath with k3s to provision
+      # volumes, so temporarily, this service has full rw access to the volume mounted under the name data
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
       containers:
         - name: postgres
           image: bitnami/postgresql
@@ -23,10 +28,19 @@ spec:
               name: postgres-creds
           ports:
           - containerPort: 5432
+          volumeMounts:
+          - name: data
+            mountPath: /data
       volumes:
         - name: postgres-creds
           secret:
             secretName: postgres-creds
+        - name: data
+          hostPath:
+            path: /var/lib/postgresql/data
+            type: Directory
+          # persistentVolumeClaim:
+          #   claimName: local
 ---
 apiVersion: v1
 kind: Service
