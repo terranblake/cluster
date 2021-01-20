@@ -16,10 +16,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - minecraft.terranblake.com
+        - mc.terranblake.com
       secretName: minecraft-tls
   rules:
-    - host: minecraft.terranblake.com
+    - host: mc.terranblake.com
       http:
         paths:
           - path: /

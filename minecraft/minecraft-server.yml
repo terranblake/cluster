@@ -32,6 +32,8 @@ spec:
           # needed for Paper versions before 1.14
           - name: CONSOLE
             value: "false"
+          - name: OPS
+            value: SuperKi64,tblake_kansas
           ports:
             - name: http
               containerPort: 25565
