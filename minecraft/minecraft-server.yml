@@ -1,0 +1,59 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: minecraft-server
+  name: minecraft-server
+  namespace: minecraft
+spec:
+  replicas: 1
+  serviceName: minecraft-server
+  selector:
+    matchLabels:
+      app: minecraft-server
+  template:
+    metadata:
+      labels:
+        app: minecraft-server
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: mc
+          image: ghcr.io/terranblake/minecraft-server
+          env:
+          - name: EULA
+            value: "true"
+          - name: TYPE
+            value: TUINITY
+          - name: VERSION
+            value: LATEST
+          # needed for Paper versions before 1.14
+          - name: CONSOLE
+            value: "false"
+          ports:
+            - name: http
+              containerPort: 25565
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          hostPath:
+            path: /var/lib/minecraft-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: minecraft-server
+  name: minecraft-server
+  namespace: minecraft
+spec:
+  ports:
+    - port: 25565
+      targetPort: 25565
+  selector:
+    app: minecraft-server
+  type: LoadBalancer
