@@ -10,7 +10,7 @@ const EXCLUSIONS = process.env.EXCLUSIONS;
 // Flag for whether or not logs should be persisted in a file
 //
 const LOG_TO_FILE = process.env.LOG_TO_FILE
-    && process.env.LOG_TO_FILE === true
+    && process.env.LOG_TO_FILE === 'true'
     && process.env.FILENAME !== null
     || false;
 
@@ -78,7 +78,7 @@ function onLogLine(containerName, namespace, line) {
     const log = `[${containerName}]/[${level}]/[${namespace}] : ${data.log}`;
     console.log(log);
 
-    if (LOG_TO_FILE)
+    if (LOG_TO_FILE === true)
         appendFileSync(LOGS_FILE, log);
 }
 

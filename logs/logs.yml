@@ -13,7 +13,7 @@ spec:
     image: ghcr.io/terranblake/logs
     env:
     - name: LOG_TO_FILE
-      value: false
+      value: "true"
     - name: EXCLUSIONS
       value: |
         kubernetes-dashboard
@@ -31,8 +31,8 @@ spec:
         fieldRef:
           fieldPath: metadata.namespace
     volumeMounts:
-    # - name: logs
-    #   mountPath: /logs
+    - name: logs
+      mountPath: /logs
     - name: varlog
       mountPath: /var/log
     - name: varlibdockercontainers
@@ -45,6 +45,6 @@ spec:
   - name: varlibdockercontainers
     hostPath:
       path: /var/lib/docker/containers
-  # - name: logs
-  #   persistentVolumeClaim:
-  #     claimName: logs
+  - name: logs
+    hostPath:
+      path: /var/lib/logs
