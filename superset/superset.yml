@@ -29,7 +29,10 @@ spec:
         app: superset
     spec:
       imagePullSecrets:
-          - name: ghcr-pull-secret
+        - name: ghcr-pull-secret
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
       containers:
       - name: superset
         image: ghcr.io/terranblake/superset:latest
@@ -38,7 +41,13 @@ spec:
             name: superset-creds
         ports:
         - containerPort: 8088
+        volumeMounts:
+          - name: data
+            mountPath: /superset
       volumes:
       - name: superset-creds
         secret:
           secretName: superset-creds
+      - name: data
+        hostPath:
+          path: /var/lib/superset
