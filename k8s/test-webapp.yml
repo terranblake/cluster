@@ -52,10 +52,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - test.terranblake.com
+        - terranblake.com
       secretName: test-tls
   rules:
-    - host: test.terranblake.com
+    - host: terranblake.com
       http:
         paths:
           - path: /

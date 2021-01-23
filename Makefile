@@ -23,7 +23,7 @@ install:
 	grep -q terranblake.com ~/.ssh/config > /dev/null 2>&1 || cat config/ssh_client_config >> ~/.ssh/config
 
 auth:
-	ssh-copy-id -i ~/.ssh/terranblake_com.pub root@terranblake.com
+	ssh-copy-id -i ~/.ssh/terranblake_com.pub root@${DOMAIN}
 
 dns:
 	sops -d --output secrets_decrypted/gandi.yml secrets/gandi.yml
@@ -63,6 +63,10 @@ package:
 iptables:	
 	scp config/iptables ${HOST}:/etc/network/if-pre-up.d/iptables-restore
 	ssh ${HOST} 'chmod +x /etc/network/if-pre-up.d/iptables-restore && sh /etc/network/if-pre-up.d/iptables-restore'
+
+kubernetes_agent_install:
+	k3sup join --ip ${AGENT_IP} --server-ip ${SERVER_IP} --ssh-key=/Volumes/sammy/.ssh/terranblake_com
+	kubectl label node ${K3S_NODE_NAME} node-role.kubernetes.io/worker=worker
 	
 kubernetes_install:
 	ssh ${HOST} 'export INSTALL_K3S_EXEC="--no-deploy traefik --disable-cloud-controller --disable-network-policy"; \
@@ -90,7 +94,12 @@ kubernetes_install:
 kubernetes_uninstall:
 	ssh ${HOST} '/usr/local/bin/k3s-uninstall.sh'
 
+kubernetes_agent_uninstall:
+	ssh ${HOST} '/usr/local/bin/k3s-agent-uninstall.sh'
+
 k8s:
+	kubectl apply -f k8s/test-webapp.yml
+
 	# this sometimes needs to be ran twice
 	kubectl apply -f k8s/ingress-nginx-v0.41.0.yml
 	kubectl wait --namespace ingress-nginx \
@@ -102,15 +111,12 @@ k8s:
 	# kubectl create namespace cert-manager
 
 	# add pull token to kube-system namespace
-	eval $$(sops -d --output-type dotenv secrets/ghcr.yml) && \
-		kubectl create secret docker-registry ghcr-pull-secret \
-		--namespace=kube-system \
-		--docker-server=ghcr.io \
-		--docker-username=terranblake@gmail.com \
-		--docker-password=$$TOKEN
-
-	# create cluster level logging pod
-	kubectl create -f logs/logs.yml
+	# eval $$(sops -d --output-type dotenv secrets/ghcr.yml) && \
+	# 	kubectl create secret docker-registry ghcr-pull-secret \
+	# 	--namespace=kube-system \
+	# 	--docker-server=ghcr.io \
+	# 	--docker-username=terranblake@gmail.com \
+	# 	--docker-password=$$TOKEN
 
 	kubectl apply -f k8s/cert-manager-v1.0.4.yml
 	kubectl wait --namespace cert-manager \
@@ -119,11 +125,8 @@ k8s:
 		--timeout=20s
 
 	kubectl apply -f k8s/lets-encrypt-issuer.yml
+	kubectl create -f logs/logs.yml
 	# kubectl apply -f k8s/ingress.yml
-
-	# netdata installation
-	kubectl apply -f netdata/netdata.yml
-
 
 dovecot:
 	sops -d --output secrets_decrypted/dovecot.yml secrets/dovecot.yml
@@ -162,18 +165,29 @@ webhook:
 	# deploy webhook using encrypted webhook manifest
 	sops exec-file secrets/webhook.yml 'MANIFEST={} && kubectl apply -f $$MANIFEST'
 
+stats:
+	# netdata installation
+	kubectl apply -f netdata/netdata.yml
+
 earney_superset:
 	# this must be done after the earney namespace has been created
-	sops -d secrets/superset.yml | kubectl create -f
-	kubectl create -f superset/ingress.yml
+	# sops -d secrets/superset.yml | kubectl delete -f -
+	sops -d secrets/superset.yml | kubectl create -f -
+	# kubectl create -f superset/pvc.yml
+	# kubectl create -f superset/ingress.yml
 	kubectl create -f superset/superset.yml
 
 earney:
 	# create namespace for all earney services
-	kubectl create -f ./earney/namespace.yml
+	# kubectl create -f earney/namespace.yml
+	# kubectl create -f earney/pvc.yml
+
+	# create webhook for autodeploys
+	# cp webhook/webhook.yml secrets_decrypted/; sed -i "s/__DEPLOYER_SECRET__/$$__DEPLOYER_SECRET__$$/g" secrets_decrypted/webhook.yml
 
 	# create secret for postgres configuration and credentials
-	sops -d secrets/postgres.yml | kubectl create -f
+	# sops -d secrets/postgres.yml | kubectl delete -f -
+	sops -d secrets/postgres.yml | kubectl create -f -
 
 	# create secret for pulling images from github
 	eval $$(sops -d --output-type dotenv secrets/ghcr.yml) && \
@@ -197,7 +211,19 @@ earney:
 	kubectl create -f ./earney/integrator.yml
 	kubectl create -f ./earney/scheduler.yml
 
-	kubectl create -f ./superset/
+minecraft-server:
+	kubectl create -f minecraft/namespace.yml
+
+	# create secret for pulling images from github
+	eval $$(sops -d --output-type dotenv secrets/ghcr.yml) && \
+		kubectl create secret docker-registry ghcr-pull-secret \
+		--namespace=minecraft \
+		--docker-server=ghcr.io \
+		--docker-username=terranblake@gmail.com \
+		--docker-password=$$TOKEN
+
+	kubectl create -f minecraft/ingress.yml
+	kubectl create -f minecraft/minecraft-server.yml
 
 tunnel:
 	kubectl apply -f wstunnel/wstunnel.yml
