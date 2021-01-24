@@ -26,6 +26,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: minecraft-server
+                name: minecraft
                 port:
                   number: 25565

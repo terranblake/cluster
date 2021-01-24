@@ -3,20 +3,28 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   labels:
-    app: minecraft-server
-  name: minecraft-server
+    app: minecraft
+  name: minecraft
   namespace: minecraft
 spec:
   replicas: 1
-  serviceName: minecraft-server
+  serviceName: minecraft
   selector:
     matchLabels:
-      app: minecraft-server
+      app: minecraft
   template:
     metadata:
       labels:
-        app: minecraft-server
+        app: minecraft
     spec:
+      # only allow redis to run on the master which is expected to always have a physical drive attached
+      nodeSelector:
+        dedicated: master
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: master
+        effect: NoSchedule
       imagePullSecrets:
         - name: ghcr-pull-secret
       containers:
@@ -43,19 +51,19 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: /var/lib/minecraft-server
+            path: /opt/minecraft
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    service: minecraft-server
-  name: minecraft-server
+    service: minecraft
+  name: minecraft
   namespace: minecraft
 spec:
   ports:
     - port: 25565
       targetPort: 25565
   selector:
-    app: minecraft-server
+    app: minecraft
   type: LoadBalancer
