@@ -31,7 +31,7 @@ spec:
                   "cp /tmp/files/tdameritrade.json /usr/config/tdameritrade/tdameritrade.json && ls /usr/config/tdameritrade"
                   ]
           imagePullPolicy: Always
-          command: ["python3", "-m", "celery", "-A", "integrator", "worker", "-l", "debug", "--concurrency=1"]
+          command: ["python3", "-m", "celery", "-A", "integrator", "worker", "-l", "debug", "--concurrency=1", "-n $(POD_NAME)"]
           env:
           - name: ENV
             value: server_default
@@ -39,6 +39,10 @@ spec:
             value: /usr/config/server
           - name: TDAMERITRADE_PATH
             value: /usr/config/tdameritrade
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
           volumeMounts:
             - name: config
               mountPath: /usr/config/server
