@@ -145,7 +145,7 @@ data:
       k8s:
         - tags: unknown
           role: pod
-          local_mode: true
+          local_mode: false
     tag:
       - name: "Control-Plane"
         selector: unknown
@@ -604,6 +604,7 @@ spec:
       hostPID: true
       hostIPC: true
       hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       initContainers:
         - name: init-nodeuid
           image: "netdata/wget:latest"
@@ -751,7 +752,6 @@ spec:
           emptyDir: {}
         - name: sd-shared
           emptyDir: {}
-      dnsPolicy: ClusterFirstWithHostNet
 ---
 # Source: netdata/templates/deployment.yaml
 apiVersion: apps/v1
@@ -782,6 +782,13 @@ spec:
       annotations:
         checksum/config: ef80423caba840d59ece4e8e6b2d849e7b249f8a9e0692db66f6a18c9f0bfe95
     spec:
+      nodeSelector:
+        dedicated: master
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: master
+        effect: NoSchedule
       securityContext:
         fsGroup: 201
       serviceAccountName: netdata
