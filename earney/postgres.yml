@@ -15,6 +15,13 @@ spec:
       labels:
         app: postgres
     spec:
+      nodeSelector:
+        dedicated: master
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: master
+          effect: NoSchedule
       # this is not inteneded to stay this way. there are issues using hostPath with k3s to provision
       # volumes, so temporarily, this service has full rw access to the volume mounted under the name data
       securityContext:
@@ -24,20 +31,20 @@ spec:
         - name: postgres
           image: bitnami/postgresql
           envFrom:
-          - secretRef:
-              name: postgres-creds
+            - secretRef:
+                name: postgres-creds
           ports:
-          - containerPort: 5432
+            - containerPort: 5432
           volumeMounts:
-          - name: data
-            mountPath: /data
+            - name: data
+              mountPath: /data
       volumes:
         - name: postgres-creds
           secret:
             secretName: postgres-creds
         - name: data
           hostPath:
-            path: /var/lib/postgresql/data
+            path: /opt/postgres/data
           # persistentVolumeClaim:
           #   claimName: local
 ---
@@ -51,8 +58,20 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 5432
-    name: postgres
-    targetPort: 5432
+    - port: 5432
+      name: postgres
+      targetPort: 5432
   selector:
     app: postgres
+# ---
+# # to be used after the postgres namespace is setup and can handle connection from every namespace
+# kind: Service
+# apiVersion: v1
+# metadata:
+#   name: postgres
+#   namespace: postgres
+# spec:
+#   type: ExternalName
+#   externalName: postgres.postgres.svc.cluster.local
+#   ports:
+#   - port: 80

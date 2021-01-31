@@ -15,6 +15,13 @@ spec:
       labels:
         app: redis
     spec:
+      nodeSelector:
+        dedicated: master
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: master
+          effect: NoSchedule
       # this is not inteneded to stay this way. there are issues using hostPath with k3s to provision
       # volumes, so temporarily, this service has full rw access to the volume mounted under the name data
       securityContext:
@@ -24,14 +31,14 @@ spec:
         - name: redis
           image: redis
           ports:
-          - containerPort: 6379
+            - containerPort: 6379
           volumeMounts:
-          - name: data
-            mountPath: /data
+            - name: data
+              mountPath: /data
       volumes:
-      - name: data
-        hostPath:
-          path: /var/lib/redis
+        - name: data
+          hostPath:
+            path: /var/lib/redis
 ---
 apiVersion: v1
 kind: Service
@@ -43,8 +50,20 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 6379
-    name: redis
-    targetPort: 6379
+    - port: 6379
+      name: redis
+      targetPort: 6379
   selector:
     app: redis
+# ---
+# # to be used after the redis namespace is setup and can handle connection from every namespace
+# kind: Service
+# apiVersion: v1
+# metadata:
+#   name: redis
+#   namespace: redis
+# spec:
+#   type: ExternalName
+#   externalName: redis.redis.svc.cluster.local
+#   ports:
+#   - port: 80
