@@ -45,8 +45,6 @@ spec:
       labels:
         app: webhook
     spec:
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: deployer
       imagePullSecrets:
         - name: ghcr-pull-secret

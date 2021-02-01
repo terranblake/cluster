@@ -15,8 +15,6 @@ spec:
       labels:
         app: integrator
     spec:
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       imagePullSecrets:
         - name: ghcr-pull-secret
       containers:
