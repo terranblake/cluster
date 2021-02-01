@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: minecraft
+  name: minecraft
+  namespace: minecraft
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minecraft
+  template:
+    metadata:
+      labels:
+        app: minecraft
+    spec:
+      # only allow minecraft to run on the master which is expected to always have a physical drive attached
+      nodeSelector:
+        dedicated: master
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: master
+        effect: NoSchedule
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: mc
+          image: ghcr.io/terranblake/minecraft-server
+          env:
+          - name: TZ
+            value: "America/Chicago"
+          - name: OVERRIDE_SERVER_PROPERTIES
+            value: "TRUE"
+          - name: MOTD
+            value: "Like 4chan found a bloomberg terminal illness"
+          - name: EULA
+            value: "true"
+          - name: TYPE
+            value: TUINITY
+          - name: VERSION
+            value: LATEST
+          # needed for Paper versions before 1.14
+          - name: CONSOLE
+            value: "false"
+          - name: ICON
+            value: "https://styles.redditmedia.com/t5_2th52/styles/communityIcon_b37n2zfs8k861.png?width=256&s=a9cb63319055ded916e5b12ff03f1e8c63ae6911"
+          - name: OVERRIDE_ICON
+            value: "TRUE"
+          - name: ENABLE_AUTOPAUSE
+            value: "TRUE"
+          - name: OPS
+            value: SuperKi64,tblake_kansas
+          ports:
+            - name: http
+              containerPort: 25565
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          hostPath:
+            path: /opt/minecraft
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: minecraft
+  name: minecraft
+  namespace: minecraft
+spec:
+  ports:
+    - port: 25565
+      targetPort: 25565
+  selector:
+    app: minecraft
+  type: LoadBalancer

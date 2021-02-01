@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: map
+  name: map
+  namespace: minecraft
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: map
+  template:
+    metadata:
+      labels:
+        app: map
+    spec:
+      # only allow minecraft to run on the master which is expected to always have a physical drive attached
+      nodeSelector:
+        dedicated: master
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: master
+        effect: NoSchedule
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: map
+          image: ghcr.io/terranblake/minecraft-map-viewer
+          command: ["python3", "map-viewer.py"]
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: PORT
+              value: "5000"
+            # - name: PREFIX
+            #   value: "/map"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          hostPath:
+            path: /opt/minecraft
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: map
+  name: map
+  namespace: minecraft
+spec:
+  ports:
+    - protocol: TCP
+      port: 5000
+      name: http
+  selector:
+    app: map
+  clusterIP: None
+  type: ClusterIP

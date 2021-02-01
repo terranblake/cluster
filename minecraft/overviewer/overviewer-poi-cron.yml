@@ -1,0 +1,60 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: overviewer-poi
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 10
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          # only allow minecraft to run on the master which is expected to always have a physical drive attached
+          nodeSelector:
+            dedicated: master
+          tolerations:
+            - key: dedicated
+              operator: Equal
+              value: master
+              effect: NoSchedule
+          hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
+          imagePullSecrets:
+            - name: ghcr-pull-secret
+          containers:
+            - name: minecraft-map-viewer
+              image: ghcr.io/terranblake/minecraft-map-viewer
+              command:
+                [
+                  "python3",
+                  "overviewer.py",
+                  "--config",
+                  "/usr/config/overviewer-config.py",
+                  "--processes",
+                  "4",
+                  "--genpoi",
+                ]
+              env:
+                - name: CENTER
+                  value: "-920,64,-315"
+                - name: FROM_CENTER
+                  value: "200"
+                - name: RENDER_SIGNS_JOINER
+                  value: ","
+                - name: RENDER_SIGNS_FILTER
+                  value: ""
+                - name: RENDER_SIGNS_HIDE_FILTER
+                  value: "false"
+                - name: CONFIG_LOCATION
+                  value: /usr/config/overviewer-config.py
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: config
+                  mountPath: /usr/config
+          volumes:
+            - name: data
+              hostPath:
+                path: /opt/minecraft

@@ -1,23 +1,21 @@
----
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   labels:
-    app: minecraft
-  name: minecraft
+    app: minecraft-hard
+  name: minecraft-hard
   namespace: minecraft
 spec:
   replicas: 1
-  serviceName: minecraft
   selector:
     matchLabels:
-      app: minecraft
+      app: minecraft-hard
   template:
     metadata:
       labels:
-        app: minecraft
+        app: minecraft-hard
     spec:
-      # only allow redis to run on the master which is expected to always have a physical drive attached
+      # only allow minecraft to run on the master which is expected to always have a physical drive attached
       nodeSelector:
         dedicated: master
       tolerations:
@@ -28,9 +26,20 @@ spec:
       imagePullSecrets:
         - name: ghcr-pull-secret
       containers:
-        - name: mc
+        - name: mc2
+          hostPort: 
           image: ghcr.io/terranblake/minecraft-server
           env:
+          - name: TZ
+            value: "America/Chicago"
+          - name: LEVEL_TYPE
+            value: "AMPLIFIED"
+          - name: OVERRIDE_SERVER_PROPERTIES
+            value: "TRUE"
+          - name: MOTD
+            value: "Hard mode; get hard bois"
+          - name: DIFFICULTY
+            value: "hard"
           - name: EULA
             value: "true"
           - name: TYPE
@@ -40,6 +49,12 @@ spec:
           # needed for Paper versions before 1.14
           - name: CONSOLE
             value: "false"
+          - name: ICON
+            value: "https://styles.redditmedia.com/t5_2th52/styles/communityIcon_b37n2zfs8k861.png?width=256&s=a9cb63319055ded916e5b12ff03f1e8c63ae6911"
+          - name: OVERRIDE_ICON
+            value: "TRUE"
+          - name: ENABLE_AUTOPAUSE
+            value: "TRUE"
           - name: OPS
             value: SuperKi64,tblake_kansas
           ports:
@@ -51,19 +66,19 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: /opt/minecraft
+            path: /opt/minecraft2
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    service: minecraft
-  name: minecraft
+    service: minecraft-hard
+  name: minecraft-hard
   namespace: minecraft
 spec:
   ports:
-    - port: 25565
+    - port: 25566
       targetPort: 25565
   selector:
-    app: minecraft
+    app: minecraft-hard
   type: LoadBalancer

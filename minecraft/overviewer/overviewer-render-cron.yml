@@ -1,0 +1,83 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: overviewer-render
+spec:
+  schedule: "0 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 10
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          # only allow minecraft to run on the master which is expected to always have a physical drive attached
+          nodeSelector:
+            dedicated: master
+          tolerations:
+            - key: dedicated
+              operator: Equal
+              value: master
+              effect: NoSchedule
+          hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
+          imagePullSecrets:
+            - name: ghcr-pull-secret
+          containers:
+            - name: overviewer-render
+              image: ghcr.io/terranblake/minecraft-overviewer
+              command:
+                [
+                  "python3",
+                  "overviewer.py",
+                  "--config",
+                  "/usr/config/overviewer-config.py",
+                  "--processes",
+                  "2",
+                ]
+              env:
+                - name: CENTER
+                  value: "-920,64,-315"
+                - name: FROM_CENTER
+                  value: "200"
+                - name: RENDER_SIGNS_JOINER
+                  value: ","
+                - name: RENDER_SIGNS_FILTER
+                  value: ""
+                - name: RENDER_SIGNS_HIDE_FILTER
+                  value: "false"
+                - name: MAP_DIRECTORY
+                  value: "/data/world"
+                - name: TEXTURES_DIRECTORY
+                  value: "/minecraft-texture-pack-v1.16"
+                - name: OUTPUT_DIRECTORY
+                  value: "/data/overviewer"
+                - name: CONFIG_LOCATION
+                  value: /usr/config/overviewer-config.py
+              volumeMounts:
+                - name: world
+                  mountPath: /data
+                - name: config
+                  mountPath: /usr/config
+          volumes:
+            - name: world
+              hostPath:
+                path: /opt/minecraft
+            - name: config
+              configMap:
+                name: minecraft-overviewer-config
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   labels:
+#     service: minecraft-overviewer
+#   name: minecraft-overviewer
+#   namespace: minecraft
+# spec:
+#   ports:
+#     - port: 25565
+#       targetPort: 25565
+#   selector:
+#     app: minecraft
+#   type: LoadBalancer
