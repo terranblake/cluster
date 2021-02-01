@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  labels:
+    app: auth
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate 
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+      - name: auth
+        image: ghcr.io/terranblake/auth:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8085
+        volumeMounts:
+        - name: config
+          mountPath: /data
+      volumes:
+      - name: config
+        configMap:
+          name: auth
+          defaultMode: 0777
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+spec:
+  selector:
+    app: auth
+  ports:
+    - protocol: TCP
+      port: 8085
+      name: http
+  clusterIP: None
+  type: ClusterIP
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: auth-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - auth.terranblake.com
+    secretName: auth-tls
+  rules:
+  - host: auth.terranblake.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: auth
+          servicePort: http
