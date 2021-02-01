@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deployment
+  namespace: minecraft
+  labels:
+    app: test-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-deployment
+  template:
+    metadata:
+      labels:
+        app: test-deployment
+    spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
+      containers:
+      - name: test-container
+        image: ghcr.io/terranblake/minecraft-overviewer
+        command: [ "sh", "-c"]
+        args:
+        - while true; do
+            ls /minecraft-texture-pack-v3.1;
+            sleep 5;
+          done;
+        env:
+        - name: CONFIG_LOCATION
+          value: /usr/config/overviewer-config.py
+        volumeMounts:
+        - name: config
+          mountPath: /usr/config
+      volumes:
+      - name: config
+        configMap:
+          name: minecraft-overviewer-config
