@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: earney
+  labels:
+    app: postgres
+spec:
+  storageClassName: manual
+  volumeName: postgres-pv
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi
