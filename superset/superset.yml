@@ -49,5 +49,17 @@ spec:
         secret:
           secretName: superset-creds
       - name: data
-        hostPath:
-          path: /var/lib/superset
+        persistentVolumeClaim:
+          claimName: superset-pvc
+# ---
+# # to be used after the superset namespace is setup and can handle connection from every namespace
+# kind: Service
+# apiVersion: v1
+# metadata:
+#   name: superset
+#   namespace: superset
+# spec:
+#   type: ExternalName
+#   externalName: superset.superset.svc.cluster.local
+#   ports:
+#   - port: 80
