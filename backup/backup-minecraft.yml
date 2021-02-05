@@ -1,26 +1,30 @@
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
-  name: backup
+  name: backup-minecraft
 spec:
-  schedule: "0 4 * * *" 
+  schedule: "0 5 * * *"
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 10
   failedJobsHistoryLimit: 2
   jobTemplate:
     spec:
       template:
         spec:
-          hostNetwork: true
-          dnsPolicy: ClusterFirstWithHostNet
+          nodeSelector:
+            dedicated: master
+          tolerations:
+          - key: dedicated
+            operator: Equal
+            value: master
+            effect: NoSchedule
           containers:
           - name: backup
             image: alpine
             args:
             - /bin/sh
             - -c
-            - apk add --no-cache lftp; tar -cvf backup.tar /data; lftp -u ${USER},${PASSWORD} dedibackup-dc3.online.net 
-              -e 'put backup.tar -o /backups/backup_neo.tar; mv backups/backup_neo.tar backups/backup.tar; bye'
+            - apk add --no-cache lftp; export TS=$(date +%s); tar -cvf minecraft_$TS.tar /data; lftp -u ${USER},${PASSWORD} 192.168.1.228 -e "put -O /home/cluster/ftp/backups minecraft_$TS.tar; bye"
             env:
             - name: USER
               valueFrom:
@@ -39,5 +43,5 @@ spec:
           volumes:
           - name: data
             hostPath: 
-              path: /opt
+              path: /opt/minecraft
               type: Directory

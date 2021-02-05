@@ -1,0 +1,47 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: backup-postgres
+spec:
+  schedule: "0 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 10
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            dedicated: master
+          tolerations:
+          - key: dedicated
+            operator: Equal
+            value: master
+            effect: NoSchedule
+          containers:
+          - name: backup
+            image: alpine
+            args:
+            - /bin/sh
+            - -c
+            - apk add --no-cache lftp; export TS=$(date +%s); tar -cvf postgres_$TS.tar /data; lftp -u ${USER},${PASSWORD} 192.168.1.228 -e "put -O /home/cluster/ftp/backups postgres_$TS.tar; bye"
+            env:
+            - name: USER
+              valueFrom:
+                secretKeyRef:
+                  name: ftp-credentials
+                  key: username
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ftp-credentials
+                  key: password
+            volumeMounts:
+            - name: data
+              mountPath: /data
+          restartPolicy: OnFailure
+          volumes:
+          - name: data
+            hostPath: 
+              path: /opt/postgres
+              type: Directory
