@@ -24,7 +24,12 @@ spec:
             args:
             - /bin/sh
             - -c
-            - apk add --no-cache lftp; export TS=$(date +%s); tar -cvf redis_$TS.tar /data; lftp -u ${USER},${PASSWORD} 192.168.1.228 -e "put -O /home/cluster/ftp/backups redis_$TS.tar; bye"
+            - apk add --no-cache curl lftp;
+              export TS=$(date +%s);
+              tar -cvf redis_$TS.tar /data;
+              lftp -u ${USER},${PASSWORD} 192.168.1.228 -e "put -O /home/cluster/ftp/backups redis_$TS.tar;
+              curl https://hc-ping.com/a0792368-95a8-450d-b8f6-576e7d95cf1e;
+              bye"
             env:
             - name: USER
               valueFrom:
