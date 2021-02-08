@@ -26,7 +26,10 @@ spec:
             - -c
             - apk add --no-cache curl lftp;
               export TS=$(date +%s);
-              tar -cvf superset_$TS.tar /data;
+              mkdir -p /temp/data/;
+              cp -r /data/* /temp/data;
+              tar -cvf superset_$TS.tar /temp/data;
+              rm -rf /temp/data;
               lftp -u ${USER},${PASSWORD} 192.168.1.228 -e "put -O /home/cluster/ftp/backups superset_$TS.tar;
               curl https://hc-ping.com/e8e3eda6-ff26-48b5-b04e-0da8f444d573;
               bye"
