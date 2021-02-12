@@ -1,0 +1,63 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: backup-redis
+spec:
+  schedule: "0 9 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            dedicated: master
+          tolerations:
+          - key: dedicated
+            operator: Equal
+            value: master
+            effect: NoSchedule
+          restartPolicy: OnFailure
+          imagePullSecrets:
+          - name: ghcr-pull-secret
+          containers:
+          - name: redis-backup
+            image: ghcr.io/terranblake/backups
+            imagePullPolicy: Always
+            command: ["python3", "backup.py"]
+            env:
+            - name: FILE_PATH
+              value: /data
+            - name: FILE_NAME
+              value: redis
+            - name: HEALTHCHECK_UUID
+              value: a0792368-95a8-450d-b8f6-576e7d95cf1e
+            - name: PARENT_FOLDER
+              value: 17lRsV33XYch5rYKE2vpOx2AGZgNh_hq-
+            - name: HEALTHCHECK_ENDPOINT
+              value: https://hc-ping.com/
+            - name: REFRESH_PATH
+              value: /usr/config/refresh/gdrive.pickle
+            - name: CREDENTIALS_PATH
+              value: /usr/config/credentials/gdrive.json
+            volumeMounts:
+              - name: refresh
+                mountPath: /usr/config/refresh
+                readOnly: false
+              - name: credentials
+                mountPath: /usr/config/credentials
+                readOnly: false
+              - name: data
+                mountPath: /data
+          volumes:
+            - name: refresh
+              configMap:
+                name: gdrive-refresh
+            - name: credentials
+              configMap:
+                name: gdrive-credentials
+            - name: data
+              hostPath: 
+                path: /opt/redis
+                type: Directory
