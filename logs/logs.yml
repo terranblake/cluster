@@ -24,6 +24,7 @@ spec:
         etcd-docker-desktop
         coredns
         logs
+        netdata
     - name: FILENAME
       value: "cluster.log"
     - name: NAMESPACE

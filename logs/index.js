@@ -57,25 +57,27 @@ const trackedFiles = {};
 // This function is called when a line of output is received 
 // from any container on the node.
 //
-function onLogLine(containerName, namespace, line) {
+function onLogLine(containerName, line) {
     // The line is a JSON object so parse it first to extract relevant data.
     let data;
     try {
         data = JSON.parse(line);
     } catch (err) {
-        if (String(SyntaxError(err).message).includes('Unexpected number'))
-            console.log(`[${containerName}]/[info] :`, line);
-        else {
-            console.error(`[${containerName}]/[error]/[${namespace}] :`, err);
-            console.error(`[logs]/[error]/[${namespace}] :`, line);
+        if (err) {
+            console.log(`[${containerName}]/[info]`, line);
+            return;
         }
-        return;
+
+        if (typeof(data) !== 'object') {
+            console.log(`[logs]/[error]`, `line to output could not be parsed. line ${line}`);
+            return;
+        }
     }
     const isError = data.stream === "stderr"; // Is the output an error?
     const level = isError ? "error" : "info";
     // const timestamp = moment().valueOf();
 
-    const log = `[${containerName}]/[${level}]/[${namespace}] : ${data.log}`;
+    const log = `[${containerName}]/[${level}] ${data.log}`;
     console.log(log);
 
     if (LOG_TO_FILE === true)
