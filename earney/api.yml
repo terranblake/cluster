@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: earney-ingress
+  name: api-ingress
   namespace: earney
   annotations:
     kubernetes.io/ingress.class: "nginx"
@@ -11,27 +11,25 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/secure-backends: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/websocket-services: earney
-    nginx.org/websocket-services: earney
-    nginx.ingress.kubernetes.io/auth-url: "https://auth.terranblake.com/oauth2/auth"
-    nginx.ingress.kubernetes.io/auth-signin: "https://auth.terranblake.com/oauth2/start?rd=https://earney.terranblake.com/"
+    nginx.ingress.kubernetes.io/websocket-services: api
+    nginx.org/websocket-services: api
 spec:
   tls:
     - hosts:
-        - earney.terranblake.com
-      secretName: earney-tls
+        - api.terranblake.com
+      secretName: api-tls
   rules:
-    - host: earney.terranblake.com
+    - host: api.terranblake.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
-              service:
-                name: dashboard
-                port:
-                  number: 3000
               # service:
-              #   name: server
+              #   name: dashboard
               #   port:
-              #     number: 5001
+              #     number: 3000
+              service:
+                name: server
+                port:
+                  number: 5001
