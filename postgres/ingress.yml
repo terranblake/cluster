@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: postgres-ingress
+  namespace: earney
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/secure-backends: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/websocket-services: earney
+    nginx.org/websocket-services: earney
+spec:
+  tls:
+    - hosts:
+        - pg.terranblake.com
+      secretName: postgres-tls
+  rules:
+    - host: pg.terranblake.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              # service:
+              #   name: dashboard
+              #   port:
+              #     number: 3000
+              service:
+                name: postgres
+                port:
+                  number: 5432
