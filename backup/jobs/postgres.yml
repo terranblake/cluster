@@ -2,8 +2,10 @@ apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: backup-postgres
+  namespace: earney
 spec:
-  schedule: "0 10 * * *"
+  # 3am cst
+  schedule: "0 6 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2
@@ -22,15 +24,30 @@ spec:
           imagePullSecrets:
           - name: ghcr-pull-secret
           containers:
-          - name: postgres-backup
+          - name: postgres
+            resources:
+              limits:
+                cpu: 100m
+                memory: 2Gi
             image: ghcr.io/terranblake/backups
             imagePullPolicy: Always
             command: ["python3", "backup.py"]
+            envFrom:
+              - secretRef:
+                  name: postgres-creds
             env:
+            - name: NAME
+              value: postgres
             - name: FILE_PATH
               value: /data
-            - name: FILE_NAME
+            - name: POSTGRESQL_USER
               value: postgres
+            - name: POSTGRESQL_HOST
+              value: postgres
+            - name: POSTGRESQL_DATABASE
+              value: earney
+            - name: POSTGRES_HOST_AUTH_METHOD
+              value: trust
             - name: HEALTHCHECK_UUID
               value: 3baa054e-93bf-448f-a6b7-a98752145d30
             - name: PARENT_FOLDER
@@ -57,6 +74,9 @@ spec:
             - name: credentials
               configMap:
                 name: gdrive-credentials
+            - name: postgres-creds
+              secret:
+                secretName: postgres-creds
             - name: data
               hostPath: 
                 path: /opt/postgres

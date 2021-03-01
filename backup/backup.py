@@ -62,10 +62,21 @@ def upload_file(service: Resource, file_path, file_metadata):
     print('File ID: %s' % file.get('id'))
 
 
-def create_tar_file(output_filename, file_to_archive):
-    print('Starting file compression to tar')
+def create_tar_file(output_filename, file_to_archive, name):
+    print(f'Starting file compression to tar {output_filename} for {name}')
     subprocess.call(['mkdir', '-p', '/temp/data/'])
-    subprocess.call(['cp', '-r', file_to_archive, '/temp/data'])
+
+    if 'postgres' in name:
+        username = os.getenv('POSTGRESQL_USER', 'postgres')
+        host = os.getenv('POSTGRESQL_HOST', 'postgres')
+        db = os.getenv('POSTGRESQL_DATABASE', 'earney')
+        os.environ['PGPASSWORD'] = os.getenv('POSTGRESQL_PASSWORD', 'noop')
+        with open('/temp/data/dump.sql', 'w') as outfile:
+            args = ['pg_dump', '-U', username, '-h', host, db]
+            subprocess.call(args, env=os.environ.copy(), stdout=outfile)
+    else:
+        subprocess.call(['cp', '-r', file_to_archive, '/temp/data'])
+    
     subprocess.call(['tar', '-cvf', output_filename, '/temp/data'])
     subprocess.call(['rm', '-rf', '/temp/data'])
     print('Finished file compression to tar')
@@ -88,7 +99,7 @@ if __name__ == '__main__':
     credentials_path = os.getenv('CREDENTIALS_PATH')
     parent_folder = os.getenv('PARENT_FOLDER')
 
-    file_name = os.getenv('FILE_NAME')
+    file_name = os.getenv('NAME', 'default')
     file_path = os.getenv('FILE_PATH', '/temp/data')
 
     ts = os.getenv('TS', datetime.datetime.now().strftime("%Y-%m-%dT%H%M%SZ"))
@@ -100,9 +111,10 @@ if __name__ == '__main__':
 
     try:
         service = get_drive_service(refresh_path, credentials_path)
-        create_tar_file(ts_file_name, file_path)
+        create_tar_file(ts_file_name, file_path, file_name)
         upload_file(service, file_path, metadata)
         healthcheck(healthcheck_uuid, '')
     except Exception as err:
         print(err)
         healthcheck(healthcheck_uuid, '/fail')
+        exit(1)

@@ -3,7 +3,8 @@ kind: CronJob
 metadata:
   name: backup-minecraft
 spec:
-  schedule: "0 11 * * *"
+  # 4am cst
+  schedule: "0 7 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2
@@ -23,10 +24,16 @@ spec:
           - name: ghcr-pull-secret
           containers:
           - name: minecraft-backup
+            resources:
+              limits:
+                cpu: 100m
+                memory: 2Gi
             image: ghcr.io/terranblake/backups
             imagePullPolicy: Always
             command: ["python3", "backup.py"]
             env:
+            - name: NAME
+              value: minecraft
             - name: FILE_PATH
               value: /data
             - name: FILE_NAME

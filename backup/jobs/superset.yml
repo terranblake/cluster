@@ -3,7 +3,8 @@ kind: CronJob
 metadata:
   name: backup-superset
 spec:
-  schedule: "30 9 * * *"
+  # 230am cst
+  schedule: "30 5 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2
@@ -23,10 +24,16 @@ spec:
           - name: ghcr-pull-secret
           containers:
           - name: superset-backup
+            resources:
+              limits:
+                cpu: 100m
+                memory: 2Gi
             image: ghcr.io/terranblake/backups
             imagePullPolicy: Always
             command: ["python3", "backup.py"]
             env:
+            - name: NAME
+              value: superset
             - name: FILE_PATH
               value: /data
             - name: FILE_NAME
