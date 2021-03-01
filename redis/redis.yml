@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: earney
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      # this is not inteneded to stay this way. there are issues using hostPath with k3s to provision
+      # volumes, so temporarily, this service has full rw access to the volume mounted under the name data
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+      containers:
+        - name: redis
+          image: redis
+          ports:
+          - containerPort: 6379
+          volumeMounts:
+          - name: data
+            mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: earney
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    name: redis
+    targetPort: 6379
+  selector:
+    app: redis
