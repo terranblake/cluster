@@ -16,8 +16,13 @@ spec:
       labels:
         app: nextcloud
     spec:
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        dedicated: master
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: master
+        effect: NoSchedule
       containers:
       - name: nextcloud
         image: linuxserver/nextcloud:amd64-version-20.0.0
@@ -37,7 +42,7 @@ spec:
           name: nextcloud-nginx-siteconfig
       - name: data
         hostPath:
-          path: /volumes/media/nextcloud
+          path: /opt/nextcloud
           type: Directory
       - name: config
         hostPath:
@@ -72,10 +77,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - cloud.erebe.eu
+    - cloud.terranblake.com
     secretName: nextcloud-tls
   rules:
-  - host: cloud.erebe.eu
+  - host: cloud.terranblake.com
     http:
       paths:
       - path: /
