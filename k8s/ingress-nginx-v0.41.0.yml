@@ -296,10 +296,22 @@ spec:
       port: 443
       protocol: TCP
       targetPort: https
+    - name: pg
+      port: 5432
+      protocol: TCP
+      targetPort: postgres
   selector:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/instance: ingress-nginx
     app.kubernetes.io/component: controller
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tcp-services
+  namespace: ingress-nginx
+data:
+  5432: "earney/postgres:5432"
 ---
 # Source: ingress-nginx/templates/controller-deployment.yaml
 apiVersion: apps/v1
@@ -348,6 +360,7 @@ spec:
             - --validating-webhook=:8443
             - --validating-webhook-certificate=/usr/local/certificates/cert
             - --validating-webhook-key=/usr/local/certificates/key
+            - --tcp-services-configmap=ingress-nginx/tcp-services
           securityContext:
             capabilities:
               drop:
@@ -397,9 +410,15 @@ spec:
             - name: webhook
               containerPort: 8443
               protocol: TCP
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
           volumeMounts:
             - name: webhook-cert
               mountPath: /usr/local/certificates/
+              readOnly: true
+            - name: tcp-services
+              mountPath: /usr/local/tcp-services
               readOnly: true
           resources:
             requests:
@@ -413,6 +432,9 @@ spec:
         - name: webhook-cert
           secret:
             secretName: ingress-nginx-admission
+        - name: tcp-services
+          configMap:
+            name: tcp-services
 ---
 # Source: ingress-nginx/templates/admission-webhooks/validating-webhook.yaml
 # before changing this value, check the required kubernetes version
