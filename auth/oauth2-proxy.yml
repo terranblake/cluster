@@ -17,13 +17,20 @@ spec:
     spec:
       containers:
         - args:
-            - --provider=google
+            - --provider=oidc
             - --email-domain=*
             - --upstream=file:///dev/null
             - --http-address=0.0.0.0:4180
             - --whitelist-domain=.terranblake.com
             - --cookie-domain=.terranblake.com
+            - --cookie-expire=24h0m0s
+            - --cookie-refresh=0h60m0s
             - --skip-provider-button
+            - --set-authorization-header=true
+            - --oidc-issuer-url=https://terranblake.us.auth0.com/
+            - --login-url=https://terranblake.us.auth0.com/authorize
+            - --redeem-url=https://terranblake.us.auth0.com/oauth/token
+            - --validate-url=https://terranblake.us.auth0.com/userinfo
           envFrom:
             - secretRef:
                 name: oauth2-creds
