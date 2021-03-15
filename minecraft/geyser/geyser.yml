@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: geyser
+  name: geyser
+  namespace: minecraft
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geyser
+  template:
+    metadata:
+      labels:
+        app: geyser
+    spec:
+      # only allow geyser to run on the master which is expected to always have a physical drive attached
+      nodeSelector:
+        dedicated: master
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: master
+        effect: NoSchedule
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: mc
+          image: ghcr.io/terranblake/minecraft-geyser
+          command: ["java", "-Xms1024M", "-jar", "Geyser.jar", "-c", "/config/config.yml"]
+          ports:
+            - name: udp
+              containerPort: 19132
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: geyser-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: geyser
+  name: geyser
+  namespace: minecraft
+spec:
+  ports:
+    - name: udp
+      port: 19132
+      targetPort: 19132
+      protocol: UDP
+  selector:
+    app: geyser
+  type: LoadBalancer
