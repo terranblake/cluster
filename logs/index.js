@@ -4,13 +4,10 @@ const globby = require("globby");
 const chokidar = require("chokidar");
 
 const winston = require("winston");
-const LogzioWinstonTransport = require("winston-logzio");
+const LokiTransport = require("winston-loki");
 
-const logzioWinstonTransport = new LogzioWinstonTransport({
-  level: "info",
-  name: "winston_logzio",
-  token: process.env.LOGZIO_TOKEN,
-  host: "listener.logz.io",
+const lokiWinstonTransport = new LokiTransport({
+  host: "http://loki:3100"
 });
 
 const logger = winston.createLogger({
@@ -21,7 +18,7 @@ const logger = winston.createLogger({
     service: process.env.KUBE_SERVICE_NAME,
     namespace: process.env.KUBE_POD_NAMESPACE,
   },
-  transports: [logzioWinstonTransport],
+  transports: [lokiWinstonTransport],
 });
 
 const FILTERS = process.env.FILTERS;

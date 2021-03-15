@@ -15,6 +15,6 @@
     "globby": "^11.0.1",
     "tail": "^2.0.4",
     "winston": "^3.3.3",
-    "winston-logzio": "^5.1.2"
+    "winston-loki": "^6.0.0"
   }
 }
