@@ -1,21 +1,26 @@
-const { appendFileSync } = require('fs');
-const tail = require('tail');
-const globby = require('globby');
-const chokidar = require('chokidar');
+const { appendFileSync } = require("fs");
+const tail = require("tail");
+const globby = require("globby");
+const chokidar = require("chokidar");
 
-const winston = require('winston');
-const LogzioWinstonTransport = require('winston-logzio');
+const winston = require("winston");
+const LogzioWinstonTransport = require("winston-logzio");
 
 const logzioWinstonTransport = new LogzioWinstonTransport({
-  level: 'info',
-  name: 'winston_logzio',
+  level: "info",
+  name: "winston_logzio",
   token: process.env.LOGZIO_TOKEN,
-  host: 'listener.logz.io',
+  host: "listener.logz.io",
 });
 
 const logger = winston.createLogger({
   format: winston.format.simple(),
-  defaultMeta: { node: process.env.KUBE_NODE_NAME },
+  defaultMeta: {
+    node: process.env.KUBE_NODE_NAME,
+    pod: process.env.KUBE_POD_NAME,
+    service: process.env.KUBE_SERVICE_NAME,
+    namespace: process.env.KUBE_POD_NAMESPACE,
+  },
   transports: [logzioWinstonTransport],
 });
 
@@ -27,7 +32,7 @@ const EXCLUSIONS = process.env.EXCLUSIONS;
 //
 const LOG_TO_FILE =
   (process.env.LOG_TO_FILE &&
-    process.env.LOG_TO_FILE === 'true' &&
+    process.env.LOG_TO_FILE === "true" &&
     process.env.FILENAME !== null) ||
   false;
 
@@ -39,7 +44,7 @@ const LOGS_FILE = `/logs/${process.env.FILENAME}`;
 //
 // The directory on the node containing log files.
 //
-const LOG_FILES_DIRECTORY = '/var/log/containers';
+const LOG_FILES_DIRECTORY = "/var/log/containers";
 
 //
 // A glob that identifies the log files we'd like to track.
@@ -55,12 +60,12 @@ const LOG_FILES_GLOB = [
 // List of filters provided from Helm values.yaml to only
 // grab log lines from resources that contains 1 of these filters
 //
-let EXCLUSIVE_FILTERS = (FILTERS && FILTERS.split(' ')) || [];
-if (EXCLUSIVE_FILTERS && EXCLUSIVE_FILTERS[0] === '') EXCLUSIVE_FILTERS = [];
+let EXCLUSIVE_FILTERS = (FILTERS && FILTERS.split(" ")) || [];
+if (EXCLUSIVE_FILTERS && EXCLUSIVE_FILTERS[0] === "") EXCLUSIVE_FILTERS = [];
 
 const INCLUSIVE_FILTERS =
   (EXCLUSIVE_FILTERS.length > 0 && []) ||
-  (EXCLUSIONS && EXCLUSIONS.split(' ')) ||
+  (EXCLUSIONS && EXCLUSIONS.split(" ")) ||
   [];
 
 //
@@ -73,30 +78,34 @@ const trackedFiles = {};
 // from any container on the node.
 //
 function onLogLine(containerName, line) {
+  let meta = {
+    container: containerName
+  };
+
   // The line is a JSON object so parse it first to extract relevant data.
   let data;
   try {
     data = JSON.parse(line);
   } catch (err) {
     if (err) {
-      logger.info(`[${containerName}]/[info]`, line);
+      logger.info(`[${containerName}]/[info] ${line}`, meta);
       return;
     }
 
-    if (typeof data !== 'object') {
-      logger.info(
-        `[logs]/[error]`,
-        `line to output could not be parsed. line ${line}`
+    if (typeof data !== "object") {
+      logger.error(
+        `[logs]/[error] line to output could not be parsed. line ${line}`,
+        meta
       );
       return;
     }
   }
-  const isError = data.stream === 'stderr'; // Is the output an error?
-  const level = isError ? 'error' : 'info';
+  const isError = data.stream === "stderr"; // Is the output an error?
+  const level = isError ? "error" : "info";
   // const timestamp = moment().valueOf();
 
   const log = `[${containerName}]/[${level}] ${data.log}`;
-  logger.info(log);
+  logger.info(log, meta);
 
   if (LOG_TO_FILE === true) appendFileSync(LOGS_FILE, log);
 }
@@ -107,12 +116,9 @@ function onLogLine(containerName, line) {
 function trackFile(logFilePath) {
   const _tail = new tail.Tail(logFilePath);
 
-  // Take note that we are now tracking this file.
-  trackedFiles[logFilePath] = _tail;
-
   // Super simple way to extract the container name from the log filename.
-  const [containerPath, namespace, __logName] = logFilePath.split('_');
-  const containerPathSegments = containerPath.split('/');
+  const [containerPath, namespace, __logName] = logFilePath.split("_");
+  const containerPathSegments = containerPath.split("/");
   const containerName = containerPathSegments[containerPathSegments.length - 1];
 
   for (let filter of INCLUSIVE_FILTERS)
@@ -122,14 +128,21 @@ function trackFile(logFilePath) {
     if (!containerName.includes(filter)) return;
 
   logger.info(
-    `[logs]/[info]/[${namespace}] : tracking new log file for container ${containerName} at path ${logFilePath}`
+    `[logs]/[info]/[${namespace}] : tracking new log file for container ${containerName} at path ${logFilePath}`,
+    { container: containerName }
   );
 
   // Handle new lines of output in the log file.
-  _tail.on('line', (line) => onLogLine(containerName, line));
+  _tail.on("line", (line) => onLogLine(containerName, line));
 
   // Handle any errors that might occur.
-  _tail.on('error', (error) => console.error(`ERROR: ${error}`));
+  _tail.on("error", (error) => console.error(`ERROR: ${error}`));
+
+  // Take note that we are now tracking this file.
+  trackedFiles[logFilePath] = {
+    container: containerName,
+    tail: _tail
+  };
 }
 
 //
@@ -150,12 +163,12 @@ async function main() {
   // Track new log files as they are created.
   chokidar
     .watch(LOG_FILES_GLOB)
-    .on('add', (newLogFilePath) => trackFile(newLogFilePath));
+    .on("add", (newLogFilePath) => trackFile(newLogFilePath));
 }
 
 main()
-  .then(() => logger.info('Online'))
+  .then(() => logger.info("Online", { container: process.KUBE_POD_NAME }))
   .catch((err) => {
-    console.error('Failed to start!');
+    console.error("Failed to start!");
     console.error((err && err.stack) || err);
   });

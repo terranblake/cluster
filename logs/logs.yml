@@ -26,25 +26,37 @@ spec:
         image: ghcr.io/terranblake/logs
         envFrom:
           - secretRef:
-            name: logzio-creds
+              name: logzio-creds
         env:
+        - name: KUBE_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KUBE_SERVICE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['name']
         - name: KUBE_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: KUBE_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: LOG_TO_FILE
-          value: "true"
-        - name: EXCLUSIONS
-          value: |
-            kubernetes-dashboard
-            kube-apiserver-docker-desktop
-            dashboard-metrics-scraper
-            kube-scheduler-docker-desktop
-            vpnkit-controller
-            etcd-docker-desktop
-            coredns
-            logs
-            netdata
+          value: "false"
+        # - name: EXCLUSIONS
+        #   value: |
+        #     kubernetes-dashboard
+        #     kube-apiserver-docker-desktop
+        #     dashboard-metrics-scraper
+        #     kube-scheduler-docker-desktop
+        #     vpnkit-controller
+        #     etcd-docker-desktop
+        #     coredns
+        #     logs
+        #     netdata
         - name: FILENAME
           value: "cluster.log"
         - name: NAMESPACE
