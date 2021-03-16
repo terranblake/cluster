@@ -7,17 +7,17 @@ const winston = require("winston");
 const LokiTransport = require("winston-loki");
 
 const lokiWinstonTransport = new LokiTransport({
-  host: "http://loki:3100"
-});
-
-const logger = winston.createLogger({
-  format: winston.format.simple(),
-  defaultMeta: {
+  host: "http://loki.default.svc.cluster.local:3100",
+  labels: {
     node: process.env.KUBE_NODE_NAME,
     pod: process.env.KUBE_POD_NAME,
     service: process.env.KUBE_SERVICE_NAME,
     namespace: process.env.KUBE_POD_NAMESPACE,
-  },
+  }
+});
+
+const logger = winston.createLogger({
+  format: winston.format.simple(),
   transports: [lokiWinstonTransport],
 });
 
@@ -75,9 +75,7 @@ const trackedFiles = {};
 // from any container on the node.
 //
 function onLogLine(containerName, line) {
-  let meta = {
-    container: containerName
-  };
+  let meta = { container: containerName };
 
   // The line is a JSON object so parse it first to extract relevant data.
   let data;
@@ -85,15 +83,12 @@ function onLogLine(containerName, line) {
     data = JSON.parse(line);
   } catch (err) {
     if (err) {
-      logger.info(`[${containerName}]/[info] ${line}`, meta);
+      logger.info({ message: `[${containerName}]/[info] ${line}`, labels: meta });
       return;
     }
 
     if (typeof data !== "object") {
-      logger.error(
-        `[logs]/[error] line to output could not be parsed. line ${line}`,
-        meta
-      );
+      logger.error({ message: `[logs]/[error] line to output could not be parsed. line ${line}`, labels: meta });
       return;
     }
   }
@@ -102,7 +97,7 @@ function onLogLine(containerName, line) {
   // const timestamp = moment().valueOf();
 
   const log = `[${containerName}]/[${level}] ${data.log}`;
-  logger.info(log, meta);
+  logger.info({ message: log, labels: meta });
 
   if (LOG_TO_FILE === true) appendFileSync(LOGS_FILE, log);
 }
@@ -124,10 +119,10 @@ function trackFile(logFilePath) {
   for (let filter in EXCLUSIVE_FILTERS)
     if (!containerName.includes(filter)) return;
 
-  logger.info(
-    `[logs]/[info]/[${namespace}] : tracking new log file for container ${containerName} at path ${logFilePath}`,
-    { container: containerName }
-  );
+  logger.info({
+    message: `[logs]/[info]/[${namespace}] : tracking new log file for container ${containerName} at path ${logFilePath}`,
+    labels: { container: containerName }
+  });
 
   // Handle new lines of output in the log file.
   _tail.on("line", (line) => onLogLine(containerName, line));
