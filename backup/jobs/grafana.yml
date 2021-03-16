@@ -1,10 +1,10 @@
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
-  name: backup-minecraft
+  name: backup-grafana
 spec:
   # 4am cst
-  schedule: "0 7 * * *"
+  schedule: "0 5 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2
@@ -23,23 +23,23 @@ spec:
           imagePullSecrets:
           - name: ghcr-pull-secret
           containers:
-          - name: minecraft-backup
+          - name: grafana-backup
             resources:
               limits:
-                cpu: 300m
-                memory: 4Gi
+                cpu: 100m
+                memory: 2Gi
             image: ghcr.io/terranblake/backups
             imagePullPolicy: Always
             command: ["python3", "backup.py"]
             env:
             - name: NAME
-              value: minecraft
+              value: grafana
             - name: FILE_PATH
               value: /data
             - name: FILE_NAME
-              value: minecraft
+              value: grafana
             - name: HEALTHCHECK_UUID
-              value: 5bc35dad-cac5-4d4b-bb05-3c1fbf689be9
+              value: bf83095c-6757-4c5f-8a03-d046aae84680
             - name: PARENT_FOLDER
               value: 17lRsV33XYch5rYKE2vpOx2AGZgNh_hq-
             - name: HEALTHCHECK_ENDPOINT
@@ -66,5 +66,5 @@ spec:
                 name: gdrive-credentials
             - name: data
               hostPath: 
-                path: /opt/minecraft
+                path: /opt/grafana
                 type: Directory
