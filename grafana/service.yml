@@ -1,0 +1,10 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: loki
+  namespace: kube-system
+spec:
+  type: ExternalName
+  externalName: default.loki.svc.cluster.local
+  ports:
+  - port: 3100

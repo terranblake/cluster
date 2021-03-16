@@ -1,0 +1,25 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: default
+  labels:
+    app: grafana
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/auth-url: "https://auth.terranblake.com/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://auth.terranblake.com/oauth2/start?rd=https://grafana.terranblake.com/"
+spec:
+  tls:
+    - hosts:
+      - grafana.terranblake.com
+      secretName: grafana-tls
+  rules:
+    - host: grafana.terranblake.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: grafana
+              servicePort: 3000
