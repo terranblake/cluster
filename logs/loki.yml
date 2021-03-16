@@ -184,10 +184,10 @@ spec:
         effect: NoSchedule
       serviceAccountName: loki
       securityContext:
-        fsGroup: 10001
-        runAsGroup: 10001
-        runAsNonRoot: true
-        runAsUser: 10001
+        fsGroup: 0
+        runAsGroup: 0
+        runAsNonRoot: false
+        runAsUser: 0
       initContainers:
         []
       containers:
@@ -231,3 +231,14 @@ spec:
         - name: storage
           persistentVolumeClaim:
             claimName: grafana-pvc
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: loki
+  namespace: kube-system
+spec:
+  type: ExternalName
+  externalName: default.loki.svc.cluster.local
+  ports:
+  - port: 3100
