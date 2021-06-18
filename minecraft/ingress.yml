@@ -17,7 +17,7 @@ spec:
   tls:
     - hosts:
         - mc.terranblake.com
-        # - mch.terranblake.com
+        - doge.terranblake.com
         # - mc-map.terranblake.com
       secretName: minecraft-tls
   rules:
@@ -40,16 +40,24 @@ spec:
             path: /
             
             
-    # - host: mch.terranblake.com
-    #   http:
-    #     paths:
-    #       - path: /
-    #         pathType: Prefix
-    #         backend:
-    #           service:
-    #             name: minecraft-hard
-    #             port:
-    #               number: 25566
+    - host: doge.terranblake.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: minecraft-cac
+                port:
+                  number: 25566
+            pathType: Prefix
+            path: /
+          - backend:
+              service:
+                name: geyser-latest
+                port:
+                  number: 19133
+            pathType: Prefix
+            path: /
+            
     # - host: mcm.terranblake.com
     #   http:
     #     paths:

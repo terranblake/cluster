@@ -22,7 +22,7 @@ install:
 	chmod 600 ~/.ssh/terranblake_com*
 	grep -q terranblake.com ~/.ssh/config > /dev/null 2>&1 || cat config/ssh_client_config >> ~/.ssh/config
 
-auth:
+copy-ssh-key:
 	ssh-copy-id -i ~/.ssh/terranblake_com.pub root@${DOMAIN}
 
 dns:
@@ -42,16 +42,17 @@ package:
 	
 	# setup sudo permissions for root
 	# ssh ${HOST} 'su -'
-	ssh ${HOST} 'apt-get install sudo -y'
-	ssh ${HOST} 'usermod -aG sudo root'
-
-	# install gnupg2 package
-	ssh ${HOST} 'apt-get update && apt-get install -y gnupg2'
+	# ssh ${HOST} 'apt-get install sudo -y'
+	# ssh ${HOST} 'usermod -aG sudo root'
 
 	# get missing keys
 	ssh ${HOST} 'sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC'
 	ssh ${HOST} 'sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138'
-	ssh ${HOST} 'apt-get update && apt-get install -f -y curl htop mtr tcpdump ncdu vim dnsutils strace iftop wireguard'
+
+	# install gnupg2 package
+	ssh ${HOST} 'apt-get update && apt-get install -y gnupg2'
+
+	ssh ${HOST} 'sudo apt-get update && apt-get install -f -y curl htop mtr tcpdump ncdu vim dnsutils strace iftop wireguard'
 	# Enable automatic security Updates
 	ssh ${HOST} 'echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections && apt-get install unattended-upgrades -y'
 	# IPv6
@@ -61,16 +62,17 @@ package:
 	# ssh ${HOST} 'systemctl daemon-reload && systemctl enable dhclient6.service && systemctl restart dhclient6.service'
 
 iptables:	
-	scp config/iptables ${HOST}:/etc/network/if-pre-up.d/iptables-restore
-	ssh ${HOST} 'chmod +x /etc/network/if-pre-up.d/iptables-restore && sh /etc/network/if-pre-up.d/iptables-restore'
+	# scp config/iptables ${HOST}:/etc/network/if-pre-up.d/iptables-restore
+	# ssh ${HOST} 'chmod +x /etc/network/if-pre-up.d/iptables-restore && sh /etc/network/if-pre-up.d/iptables-restore'
 
 kubernetes_agent_install:
 	k3sup join --ip ${AGENT_IP} --server-ip ${SERVER_IP} --ssh-key=/Volumes/sammy/.ssh/terranblake_com
+	kubectl label node ${K3S_NODE_NAME} dedicated=worker
 	kubectl label node ${K3S_NODE_NAME} node-role.kubernetes.io/worker=worker
 	
 kubernetes_install:
-	ssh ${HOST} 'export INSTALL_K3S_EXEC="--no-deploy traefik --disable-cloud-controller --disable-network-policy"; \
-		curl -sfL https://get.k3s.io | sh -'
+	# ssh ${HOST} 'export INSTALL_K3S_EXEC="--no-deploy traefik --disable-cloud-controller"; \
+	# 	curl -sfL https://get.k3s.io | sh -'
 
 	# get k3s config
 	scp ${HOST}:/etc/rancher/k3s/k3s.yaml secrets_decrypted/k3s.yml
@@ -98,8 +100,6 @@ kubernetes_agent_uninstall:
 	ssh ${HOST} '/usr/local/bin/k3s-agent-uninstall.sh'
 
 k8s:
-	kubectl apply -f k8s/test-webapp.yml
-
 	# this sometimes needs to be ran twice
 	kubectl apply -f k8s/ingress-nginx-v0.41.0.yml
 	kubectl wait --namespace ingress-nginx \
@@ -107,7 +107,6 @@ k8s:
 		--selector=app.kubernetes.io/component=controller \
 		--timeout=120s
 
-	# kubectl apply -f k8s/ingress.yml
 	# kubectl create namespace cert-manager
 
 	# add pull token to kube-system namespace
@@ -126,7 +125,6 @@ k8s:
 
 	kubectl apply -f k8s/lets-encrypt-issuer.yml
 	kubectl create -f logs/logs.yml
-	# kubectl apply -f k8s/ingress.yml
 
 dovecot:
 	sops -d --output secrets_decrypted/dovecot.yml secrets/dovecot.yml
@@ -146,13 +144,19 @@ nextcloud_resync_file:
 	kubectl exec -t $(shell kubectl get pods -n default -l app=nextcloud -o json | jq .items[].metadata.name) -- sudo -u abc /config/www/nextcloud/occ files:scan --all
 
 backup:
-	sops -d --output secrets_decrypted/backup_ftp_credentials.yml secrets/backup_ftp_credentials.yml
-	kubectl apply -f secrets_decrypted/backup_ftp_credentials.yml
-	kubectl apply -f backup/backup-cron.yml
+	# credentials for uploading to google drive
+	kubectl create configmap gdrive-refresh --from-file ./secrets_decrypted/gdrive.pickle
+	kubectl create configmap gdrive-credentials --from-file ./secrets_decrypted/gdrive.json
+
+	kubectl create configmap gdrive-refresh -n earney --from-file ./secrets_decrypted/gdrive.pickle
+	kubectl create configmap gdrive-credentials -n earney --from-file ./secrets_decrypted/gdrive.json
+
+	# create all the jobs
+	kubectl apply -f backup/jobs/
 
 webhook:
 	# webhook ssh key (only needs to be ran the first time)
-	# cp webhook/webhook.yml secrets_decrypted/; sed -i "s/__DEPLOYER_SECRET__/$$__DEPLOYER_SECRET__/g" secrets_decrypted/webhook.yml
+	cp webhook/webhook.yml secrets_decrypted/; sed -i "s/__DEPLOYER_SECRET__/$$__DEPLOYER_SECRET__/g" secrets_decrypted/webhook.yml
 
 	# create ghcr imagePullSecret for pulling webhook
 	eval $$(sops -d --output-type dotenv secrets/ghcr.yml) && \
@@ -165,29 +169,30 @@ webhook:
 	# deploy webhook using encrypted webhook manifest
 	sops exec-file secrets/webhook.yml 'MANIFEST={} && kubectl apply -f $$MANIFEST'
 
-stats:
-	# netdata installation
-	kubectl apply -f netdata/netdata.yml
+grafana-chart:
+	sops -d secrets/grafana.yml | kubectl create -n default -f -
+	kubectl create -f grafana
 
-earney_superset:
+netdata-monitoring:
+	kubectl apply -f netdata
+
+apache-superset:
 	# this must be done after the earney namespace has been created
-	# sops -d secrets/superset.yml | kubectl delete -f -
-	sops -d secrets/superset.yml | kubectl create -f -
-	# kubectl create -f superset/pvc.yml
-	# kubectl create -f superset/ingress.yml
-	kubectl create -f superset/superset.yml
+	# sops -d secrets/superset.yml | kubectl delete -n earney -f -
+	sops -d secrets/superset.yml | kubectl create -n earney -f -
+	kubectl create -f superset/
 
 earney:
 	# create namespace for all earney services
 	# kubectl create -f earney/namespace.yml
-	# kubectl create -f earney/pvc.yml
 
 	# create webhook for autodeploys
 	# cp webhook/webhook.yml secrets_decrypted/; sed -i "s/__DEPLOYER_SECRET__/$$__DEPLOYER_SECRET__$$/g" secrets_decrypted/webhook.yml
 
 	# create secret for postgres configuration and credentials
 	# sops -d secrets/postgres.yml | kubectl delete -f -
-	sops -d secrets/postgres.yml | kubectl create -f -
+	# sops -d secrets/postgres.yml | kubectl create -f -
+	# sops -d secrets/postgres.yml | kubectl create -n earney -f -
 
 	# create secret for pulling images from github
 	eval $$(sops -d --output-type dotenv secrets/ghcr.yml) && \
@@ -197,19 +202,22 @@ earney:
 		--docker-username=terranblake@gmail.com \
 		--docker-password=$$TOKEN
 
+	kubectl create configmap gdrive-refresh --from-file ./secrets_decrypted/gdrive.pickle -n earney
+	kubectl create configmap gdrive-refresh --from-file ./secrets_decrypted/gdrive.pickle
+
+	kubectl create secret generic gdrive-credentials --from-file ./secrets_decrypted/gdrive.json -n earney
+	kubectl create secret generic gdrive-credentials --from-file ./secrets_decrypted/gdrive.json
+
 	# create all credentials for earney services
 	kubectl create configmap earney-server-config --from-file ./secrets_decrypted/server_default.json -n earney
 	kubectl create configmap earney-dashboard-config --from-file ./secrets_decrypted/default.json -n earney
 	kubectl create configmap earney-tdameritrade-auth --from-file ./secrets_decrypted/tdameritrade.json -n earney
 
+	kubectl create -f postgres/
+	kubectl create -f redis/
+
 	# create all earney services
-	kubectl create -f ./earney/ingress.yml
-	kubectl create -f ./earney/redis.yml
-	kubectl create -f ./earney/postgres.yml
-	kubectl create -f ./earney/server.yml
-	kubectl create -f ./earney/dashboard.yml
-	kubectl create -f ./earney/integrator.yml
-	kubectl create -f ./earney/scheduler.yml
+	kubectl create -f earney/
 
 minecraft-server:
 	kubectl create -f minecraft/namespace.yml
@@ -223,7 +231,16 @@ minecraft-server:
 		--docker-password=$$TOKEN
 
 	kubectl create -f minecraft/ingress.yml
-	kubectl create -f minecraft/minecraft-server.yml
+	kubectl create -f minecraft/tsst/minecraft.yml
+
+minecraft-overviewer:
+	kubectl create configmap minecraft-overviewer-config \
+		--from-file ./overviewer/overviewer-config.py \
+		--namespace minecraft
+
+	kubectl create -f overviewer/overviewer.yml
+	kubectl create -f overviewer/map-viewer
+
 
 tunnel:
 	kubectl apply -f wstunnel/wstunnel.yml

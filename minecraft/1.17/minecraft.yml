@@ -2,18 +2,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: minecraft-hard
-  name: minecraft-hard
+    app: minecraft-cac
+  name: minecraft-cac
   namespace: minecraft
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: minecraft-hard
+      app: minecraft-cac
   template:
     metadata:
       labels:
-        app: minecraft-hard
+        app: minecraft-cac
     spec:
       # only allow minecraft to run on the master which is expected to always have a physical drive attached
       nodeSelector:
@@ -33,24 +33,26 @@ spec:
           - name: TZ
             value: "America/Chicago"
           - name: LEVEL_TYPE
-            value: "AMPLIFIED"
+            value: "DEFAULT"
+          - name: ALLOW_FLIGHT
+            value: "true"
           - name: OVERRIDE_SERVER_PROPERTIES
             value: "TRUE"
           - name: MOTD
-            value: "Hard mode; get hard bois"
+            value: "By joining you accept the terms of service -> "
           - name: DIFFICULTY
             value: "hard"
           - name: EULA
             value: "true"
           - name: TYPE
-            value: TUINITY
+            value: VANILLA
           - name: VERSION
             value: LATEST
           # needed for Paper versions before 1.14
           - name: CONSOLE
             value: "false"
           - name: ICON
-            value: "https://styles.redditmedia.com/t5_2th52/styles/communityIcon_b37n2zfs8k861.png?width=256&s=a9cb63319055ded916e5b12ff03f1e8c63ae6911"
+            value: "https://i.imgur.com/K21cDtl.png"
           - name: OVERRIDE_ICON
             value: "TRUE"
           - name: ENABLE_AUTOPAUSE
@@ -66,19 +68,19 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: /opt/minecraft2
+            path: /opt/caves-cliffs-1.17
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    service: minecraft-hard
-  name: minecraft-hard
+    service: minecraft-cac
+  name: minecraft-cac
   namespace: minecraft
 spec:
   ports:
     - port: 25566
       targetPort: 25565
   selector:
-    app: minecraft-hard
+    app: minecraft-cac
   type: LoadBalancer

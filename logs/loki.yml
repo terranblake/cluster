@@ -230,15 +230,16 @@ spec:
             secretName: loki
         - name: storage
           persistentVolumeClaim:
-            claimName: grafana-pvc
+            claimName: loki-pvc
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  name: loki
-  namespace: kube-system
-spec:
-  type: ExternalName
-  externalName: default.loki.svc.cluster.local
-  ports:
-  - port: 3100
+# this is required to provide a dns entry for grafana to use to connect to loki
+# kind: Service
+# apiVersion: v1
+# metadata:
+#   name: loki
+#   namespace: kube-system
+# spec:
+#   type: ExternalName
+#   externalName: loki.default.svc.cluster.local
+#   ports:
+#   - port: 3100

@@ -15,48 +15,52 @@ spec:
           nodeSelector:
             dedicated: master
           tolerations:
-          - key: dedicated
-            operator: Equal
-            value: master
-            effect: NoSchedule
+            - key: dedicated
+              operator: Equal
+              value: master
+              effect: NoSchedule
           restartPolicy: OnFailure
           imagePullSecrets:
-          - name: ghcr-pull-secret
+            - name: ghcr-pull-secret
+          initContainers:
+            - name: minecraft-backup
+              resources:
+                limits:
+                  cpu: 300m
+                  memory: 4Gi
+              image: ghcr.io/terranblake/backups
+              imagePullPolicy: Always
+              command: ["python3", "backup.py"]
+              env:
+                - name: NAME
+                  value: minecraft
+                - name: FILE_PATH
+                  value: /data
+                - name: FILE_NAME
+                  value: minecraft
+                - name: HEALTHCHECK_UUID
+                  value: 5bc35dad-cac5-4d4b-bb05-3c1fbf689be9
+                - name: PARENT_FOLDER
+                  value: 17lRsV33XYch5rYKE2vpOx2AGZgNh_hq-
+                - name: HEALTHCHECK_ENDPOINT
+                  value: https://hc-ping.com/
+                - name: REFRESH_PATH
+                  value: /usr/config/refresh/gdrive.pickle
+                - name: CREDENTIALS_PATH
+                  value: /usr/config/credentials/gdrive.json
+              volumeMounts:
+                - name: refresh
+                  mountPath: /usr/config/refresh
+                  readOnly: false
+                - name: credentials
+                  mountPath: /usr/config/credentials
+                  readOnly: false
+                - name: data
+                  mountPath: /data
           containers:
-          - name: minecraft-backup
-            resources:
-              limits:
-                cpu: 300m
-                memory: 4Gi
-            image: ghcr.io/terranblake/backups
-            imagePullPolicy: Always
-            command: ["python3", "backup.py"]
-            env:
-            - name: NAME
-              value: minecraft
-            - name: FILE_PATH
-              value: /data
-            - name: FILE_NAME
-              value: minecraft
-            - name: HEALTHCHECK_UUID
-              value: 5bc35dad-cac5-4d4b-bb05-3c1fbf689be9
-            - name: PARENT_FOLDER
-              value: 17lRsV33XYch5rYKE2vpOx2AGZgNh_hq-
-            - name: HEALTHCHECK_ENDPOINT
-              value: https://hc-ping.com/
-            - name: REFRESH_PATH
-              value: /usr/config/refresh/gdrive.pickle
-            - name: CREDENTIALS_PATH
-              value: /usr/config/credentials/gdrive.json
-            volumeMounts:
-              - name: refresh
-                mountPath: /usr/config/refresh
-                readOnly: false
-              - name: credentials
-                mountPath: /usr/config/credentials
-                readOnly: false
-              - name: data
-                mountPath: /data
+            - name: kubectl
+              image: bitnami/kubectl
+              command: ['kubectl', 'rollout', 'restart', 'deployment/minecraft', '-n', 'minecraft']
           volumes:
             - name: refresh
               configMap:
@@ -65,6 +69,6 @@ spec:
               configMap:
                 name: gdrive-credentials
             - name: data
-              hostPath: 
+              hostPath:
                 path: /opt/minecraft
                 type: Directory

@@ -23,7 +23,7 @@ spec:
           restartPolicy: OnFailure
           imagePullSecrets:
           - name: ghcr-pull-secret
-          containers:
+          initContainers:
           - name: postgres
             resources:
               limits:
@@ -67,6 +67,10 @@ spec:
                 readOnly: false
               - name: data
                 mountPath: /data
+          containers:
+            - name: kubectl
+              image: bitnami/kubectl
+              command: ['kubectl', 'rollout', 'restart', 'deployment/postgres', '-n', 'earney']
           volumes:
             - name: refresh
               configMap:
