@@ -1,0 +1,101 @@
+version: "3"
+services:
+    plex:
+        image: lscr.io/linuxserver/plex:latest
+        container_name: plex
+        network_mode: host # Change this to bridge if you don't want Plex to run on your host network.
+        environment:
+            - PUID=1000 # Change this to your user ID
+            - PGID=1000 # Change this to your group ID
+            - TZ=Etc/UTC # Change this to your timezone
+            - VERSION=docker
+            - PLEX_CLAIM= #optional
+        volumes:
+            - /Users/terranblake/Documents/cluster/media-server/data/plex:/config
+            - /Users/terranblake/Documents/cluster/media-server/data/tvseries:/tv # Change this to your TV series directory
+            - /Users/terranblake/Documents/cluster/media-server/data/movies:/movies # Change this to your movies directory
+        restart: unless-stopped
+        ports:
+            - 32400:32400/tcp
+            - 32469:32469/udp
+    qbittorrent:
+        image: ghcr.io/trigus42/alpine-qbittorrentvpn
+        container_name: qbittorrentvpn
+        restart: unless-stopped
+        privileged: true
+        volumes:
+            - /Users/terranblake/Documents/cluster/media-server/qbittorrent:/config
+            - /Users/terranblake/Documents/cluster/media-server/data/downloads:/downloads # Change this to your downloads directory
+        environment:
+            - PUID=1000 # Change this to your user ID
+            - PGID=1000 # Change this to your group ID
+            - VPN_ENABLED=yes
+            - VPN_TYPE=wireguard # Change this to wireguard if you want to use WireGuard
+
+            - ENABLE_SSL=no
+            # - NAME_SERVERS=103.86.96.100
+            - LAN_NETWORK=192.168.1.0/24 # Change this to your LAN network
+            - WEBUI_PASSWORD=admin
+
+            - RESTART_CONTAINER=no
+        ports:
+            - 8080:8080
+            - 51820:51820
+            - 8999:8999
+            - 8999:8999/udp
+        sysctls:
+            - net.ipv6.conf.all.disable_ipv6=0
+    sonarr:
+        image: lscr.io/linuxserver/sonarr:latest
+        container_name: sonarr
+        environment:
+            - PUID=1000 # Change this to your user ID
+            - PGID=1000 # Change this to your group ID
+            - TZ=Etc/UTC # Change this to your timezone
+        volumes:
+            - /Users/terranblake/Documents/cluster/media-server/data/sonarr:/config
+            - /Users/terranblake/Documents/cluster/media-server/data/tvseries:/tv # Change this to your TV series directory
+            - /Users/terranblake/Documents/cluster/media-server/data/downloads:/downloads # Change this to your downloads directory
+        ports:
+            - 8989:8989
+        restart: unless-stopped
+    radarr:
+        image: lscr.io/linuxserver/radarr:latest
+        container_name: radarr
+        environment:
+            - PUID=1000 # Change this to your user ID
+            - PGID=1000 # Change this to your group ID
+            - TZ=Etc/UTC # Change this to your timezone
+        volumes:
+            - /Users/terranblake/Documents/cluster/media-server/data/radarr:/config
+            - /Users/terranblake/Documents/cluster/media-server/data/movies:/movies # Change this to your Movies directory
+            - /Users/terranblake/Documents/cluster/media-server/data/downloads:/downloads # Change this to your downloads directory
+        ports:
+            - 7878:7878
+        restart: unless-stopped
+    jackett:
+        image: lscr.io/linuxserver/jackett:latest
+        container_name: jackett
+        environment:
+            - PUID=1000 # Change this to your user ID
+            - PGID=1000 # Change this to your group ID
+            - TZ=Etc/UTC # Change this to your timezone
+            - AUTO_UPDATE=true
+        volumes:
+            - /Users/terranblake/Documents/cluster/media-server/data/jackett:/config
+            - /Users/terranblake/Documents/cluster/media-server/data/downloads:/downloads # Change this to your downloads directory
+        ports:
+            - 9117:9117
+        restart: unless-stopped
+    overseerr:
+        image: lscr.io/linuxserver/overseerr:latest
+        container_name: overseerr
+        environment:
+            - PUID=1000 # Change this to your user ID
+            - PGID=1000 # Change this to your group ID
+            - TZ=Etc/UTC # Change this to your timezone
+        volumes:
+            - /Users/terranblake/Documents/cluster/media-server/data/overseerr:/config
+        ports:
+            - 5055:5055
+        restart: unless-stopped
